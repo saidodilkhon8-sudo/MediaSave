@@ -86,6 +86,8 @@ async def main():
             logger.info("Webhook mode enabled: %s", webhook_url)
             await asyncio.Event().wait()
         else:
+            await bot.delete_webhook(drop_pending_updates=True)
+            logger.info("Local polling mode enabled")
             await dp.start_polling(bot)
     finally:
         if os.getenv("RENDER_EXTERNAL_HOSTNAME"):
