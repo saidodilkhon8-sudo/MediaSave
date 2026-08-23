@@ -30,7 +30,9 @@ class YouTubeDownloader(BaseDownloader):
         last_error = None
         for client in ("android_vr", "android"):
             try:
-                ydl_opts = self._ydl_options(client, quiet=True, no_warnings=True)
+                ydl_opts = self._ydl_options(
+                    client, quiet=True, no_warnings=True, format="best"
+                )
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(url, download=False)
                 break
