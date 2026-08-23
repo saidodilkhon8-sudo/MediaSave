@@ -8,12 +8,12 @@ from mediasave.app.media.ffmpeg import run_ffmpeg
 
 
 class YouTubeDownloader(BaseDownloader):
-    def _ydl_options(self, **options):
+    def _ydl_options(self, client: str = "android_vr", **options):
         if settings.youtube_cookies_path:
             options["cookiefile"] = settings.youtube_cookies_path
         options["ffmpeg_location"] = settings.ffmpeg_executable
         options["extractor_args"] = {
-            "youtube": {"player_client": ["android"]}
+            "youtube": {"player_client": [client]}
         }
         return options
 
@@ -27,9 +27,17 @@ class YouTubeDownloader(BaseDownloader):
 
     async def get_info(self, url: str) -> MediaInfo:
         import yt_dlp
-        ydl_opts = self._ydl_options(quiet=True, no_warnings=True)
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
+        last_error = None
+        for client in ("android_vr", "android"):
+            try:
+                ydl_opts = self._ydl_options(client, quiet=True, no_warnings=True)
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=False)
+                break
+            except yt_dlp.utils.DownloadError as error:
+                last_error = error
+        else:
+            raise last_error
         is_short = "/shorts/" in url or info.get("duration", 0) <= 60
         platform = PlatformType.YOUTUBE_SHORTS if is_short else PlatformType.YOUTUBE
         media_type = MediaType.VIDEO if info.get("vcodec") != "none" else MediaType.AUDIO
@@ -47,14 +55,25 @@ class YouTubeDownloader(BaseDownloader):
     async def download(self, url: str, output_dir: str, quality: str = "best") -> str:
         import yt_dlp
         import os
-        ydl_opts = self._ydl_options(
-            outtmpl=os.path.join(output_dir, "%(title)s.%(ext)s"),
-            quiet=True,
-            no_warnings=True,
-            format=self._format_for_quality(quality),
-        )
+        last_error = None
+        for client in ("android_vr", "android"):
+            try:
+                ydl_opts = self._ydl_options(
+                    client,
+                    outtmpl=os.path.join(output_dir, "%(title)s.%(ext)s"),
+                    quiet=True,
+                    no_warnings=True,
+                    format=self._format_for_quality(quality),
+                )
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                break
+            except yt_dlp.utils.DownloadError as error:
+                last_error = error
+        else:
+            raise last_error
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
             for requested in info.get("requested_downloads", []):
                 file_path = requested.get("filepath") or requested.get("filename")
                 if file_path and Path(file_path).is_file():
