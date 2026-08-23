@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from aiohttp import web
+from aiogram.types import Update
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
@@ -43,10 +44,17 @@ async def health_check(request: web.Request) -> web.Response:
     return web.json_response({"status": "ok"})
 
 
-async def start_health_server() -> web.AppRunner:
+async def start_health_server(bot: Bot, dp: Dispatcher) -> web.AppRunner:
     app = web.Application()
     app.router.add_get("/", health_check)
     app.router.add_get("/health", health_check)
+
+    async def telegram_webhook(request: web.Request) -> web.Response:
+        update = Update.model_validate(await request.json())
+        await dp.feed_update(bot, update)
+        return web.json_response({"ok": True})
+
+    app.router.add_post("/telegram/webhook", telegram_webhook)
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", int(os.getenv("PORT", "10000")))
@@ -58,17 +66,26 @@ async def main():
     await init_db()
     settings.temp_path.mkdir(parents=True, exist_ok=True)
     asyncio.create_task(cleanup_temp_files())
-    health_runner = await start_health_server()
     bot = Bot(
         token=settings.bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
     dp = Dispatcher()
     dp.include_router(bot_router)
+    health_runner = await start_health_server(bot, dp)
     logger.info("MediaSave bot started")
     try:
-        await dp.start_polling(bot)
+        render_host = os.getenv("RENDER_EXTERNAL_HOSTNAME")
+        if render_host:
+            webhook_url = f"https://{render_host}/telegram/webhook"
+            await bot.set_webhook(webhook_url, drop_pending_updates=True)
+            logger.info("Webhook mode enabled: %s", webhook_url)
+            await asyncio.Event().wait()
+        else:
+            await dp.start_polling(bot)
     finally:
+        if os.getenv("RENDER_EXTERNAL_HOSTNAME"):
+            await bot.delete_webhook()
         await health_runner.cleanup()
         await bot.session.close()
 
