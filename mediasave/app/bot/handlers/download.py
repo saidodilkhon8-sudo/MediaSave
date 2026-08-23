@@ -104,9 +104,12 @@ async def handle_url(message: Message):
         except Exception:
             logger.exception("Download handling failed for %s", url)
             await message.answer(get_text(lang, "download_error"))
-            async with get_session() as session:
-                download_repo = DownloadRepository(session)
-                await download_repo.update_status(download.id, "failed", error_message="error")
+            try:
+                async with get_session() as session:
+                    download_repo = DownloadRepository(session)
+                    await download_repo.update_status(download.id, "failed", error_message="error")
+            except Exception:
+                logger.exception("Could not mark download %s as failed", download.id)
 
     position = await download_queue.enqueue(do_download)
     if position > 1:

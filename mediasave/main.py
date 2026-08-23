@@ -50,9 +50,13 @@ async def start_health_server(bot: Bot, dp: Dispatcher) -> web.AppRunner:
     app.router.add_get("/health", health_check)
 
     async def telegram_webhook(request: web.Request) -> web.Response:
-        update = Update.model_validate(await request.json())
-        await dp.feed_update(bot, update)
-        return web.json_response({"ok": True})
+        try:
+            update = Update.model_validate(await request.json())
+            await dp.feed_update(bot, update)
+            return web.json_response({"ok": True})
+        except Exception:
+            logger.exception("Telegram webhook update failed")
+            return web.json_response({"ok": False}, status=500)
 
     app.router.add_post("/telegram/webhook", telegram_webhook)
     runner = web.AppRunner(app)

@@ -1,6 +1,9 @@
 import asyncio
+import logging
 from typing import Callable, Awaitable, Optional
 from mediasave.app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class DownloadQueue:
@@ -25,7 +28,7 @@ class DownloadQueue:
             try:
                 await task()
             except Exception:
-                pass
+                logger.exception("Queued task failed")
             self._queue.task_done()
         async with self._lock:
             self._processing = False
