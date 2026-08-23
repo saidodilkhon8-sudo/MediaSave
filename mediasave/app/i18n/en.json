@@ -1,6 +1,7 @@
 {
   "start_message": "👋 Hi! Send me a link to a video or image, and I'll try to fetch the available media file.",
   "menu_download": "📥 Download",
+  "download_prompt": "📥 Send a video or image link.",
   "menu_settings": "⚙️ Settings",
   "menu_history": "📜 History",
   "menu_help": "❓ Help",

@@ -46,10 +46,10 @@ docker-compose up --build
 1. Push this repository to GitHub.
 2. In Render, choose **New +** -> **Blueprint** and select the repository.
 3. Set `BOT_TOKEN` in the Render environment settings.
-4. Deploy the `mediasave-bot` background worker.
+4. Deploy the `mediasave-bot` web service.
 
-The included `render.yaml` uses the Dockerfile, stores SQLite data on a persistent disk,
-and keeps temporary files under `/data/temp`.
+The included `render.yaml` uses a free Web Service with a health endpoint. Free services
+can sleep when idle, and their local SQLite data and temporary files are ephemeral.
 
 ## Configuration
 
@@ -64,6 +64,7 @@ and keeps temporary files under `/data/temp`.
 | `FFMPEG_TIMEOUT` | FFmpeg timeout (s) | `120` |
 | `FFMPEG_PATH` | FFmpeg executable path | `ffmpeg` |
 | `YOUTUBE_COOKIES_FILE` | Optional yt-dlp cookies file | empty |
+| `YOUTUBE_COOKIES_BASE64` | Optional Base64 Netscape cookies for Render | empty |
 | `LOG_LEVEL` | Logging level | `INFO` |
 | `AUTO_DELETE_HOURS` | Auto-delete temp files after hours | `24` |
 | `DEFAULT_LANGUAGE` | Default language | `ru` |

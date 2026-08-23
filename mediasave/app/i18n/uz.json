@@ -1,6 +1,7 @@
 {
   "start_message": "👋 Salom! Menga video yoki rasm havolasini yuboring, men mavjud media faylni olishga harakat qilaman.",
   "menu_download": "📥 Yuklash",
+  "download_prompt": "📥 Video yoki rasm havolasini yuboring.",
   "menu_settings": "⚙️ Sozlamalar",
   "menu_history": "📜 Tarix",
   "menu_help": "❓ Yordam",

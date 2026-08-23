@@ -9,8 +9,8 @@ from mediasave.app.media.ffmpeg import run_ffmpeg
 
 class YouTubeDownloader(BaseDownloader):
     def _ydl_options(self, **options):
-        if settings.youtube_cookies_file:
-            options["cookiefile"] = settings.youtube_cookies_file
+        if settings.youtube_cookies_path:
+            options["cookiefile"] = settings.youtube_cookies_path
         options["ffmpeg_location"] = settings.ffmpeg_executable
         return options
 

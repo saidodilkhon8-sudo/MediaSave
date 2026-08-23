@@ -9,6 +9,12 @@ from mediasave.app.config import settings
 router = Router()
 
 
+async def get_user_language(message: Message) -> str:
+    async with get_session() as session:
+        user = await UserRepository(session).get_by_telegram_id(message.from_user.id)
+        return user.language if user else "ru"
+
+
 @router.message(CommandStart())
 async def cmd_start(message: Message):
     async with get_session() as session:
@@ -30,3 +36,23 @@ async def cmd_start(message: Message):
         resize_keyboard=True,
     )
     await message.answer(text, reply_markup=kb)
+
+
+@router.message(lambda m: m.text and m.text in {
+    get_text("ru", "menu_download"),
+    get_text("uz", "menu_download"),
+    get_text("en", "menu_download"),
+})
+async def menu_download(message: Message):
+    lang = await get_user_language(message)
+    await message.answer(get_text(lang, "download_prompt"))
+
+
+@router.message(lambda m: m.text and m.text in {
+    get_text("ru", "menu_help"),
+    get_text("uz", "menu_help"),
+    get_text("en", "menu_help"),
+})
+async def menu_help(message: Message):
+    lang = await get_user_language(message)
+    await message.answer(get_text(lang, "help_text"))

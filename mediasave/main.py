@@ -1,8 +1,10 @@
 import asyncio
 import logging
 import shutil
+import os
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
+from aiohttp import web
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
@@ -37,10 +39,26 @@ async def cleanup_temp_files():
         await asyncio.sleep(3600)
 
 
+async def health_check(request: web.Request) -> web.Response:
+    return web.json_response({"status": "ok"})
+
+
+async def start_health_server() -> web.AppRunner:
+    app = web.Application()
+    app.router.add_get("/", health_check)
+    app.router.add_get("/health", health_check)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", int(os.getenv("PORT", "10000")))
+    await site.start()
+    return runner
+
+
 async def main():
     await init_db()
     settings.temp_path.mkdir(parents=True, exist_ok=True)
     asyncio.create_task(cleanup_temp_files())
+    health_runner = await start_health_server()
     bot = Bot(
         token=settings.bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
@@ -48,7 +66,11 @@ async def main():
     dp = Dispatcher()
     dp.include_router(bot_router)
     logger.info("MediaSave bot started")
-    await dp.start_polling(bot)
+    try:
+        await dp.start_polling(bot)
+    finally:
+        await health_runner.cleanup()
+        await bot.session.close()
 
 
 if __name__ == "__main__":
