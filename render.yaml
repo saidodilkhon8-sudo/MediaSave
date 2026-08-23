@@ -1,0 +1,22 @@
+services:
+  - type: worker
+    name: mediasave-bot
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:////data/mediasave.db
+      - key: TEMP_DIR
+        value: /data/temp
+      - key: FFMPEG_PATH
+        value: ffmpeg
+      - key: LOG_LEVEL
+        value: INFO
+    disk:
+      name: mediasave-data
+      mountPath: /data
+      sizeGB: 1

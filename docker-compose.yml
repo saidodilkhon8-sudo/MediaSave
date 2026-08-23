@@ -1,0 +1,19 @@
+services:
+  bot:
+    build: .
+    container_name: mediasave-bot
+    restart: unless-stopped
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - DATABASE_URL=sqlite+aiosqlite:///mediasave.db
+      - TEMP_DIR=./temp
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./temp:/app/temp
+      - ./logs:/app/logs
+      - ./mediasave.db:/app/mediasave.db
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
