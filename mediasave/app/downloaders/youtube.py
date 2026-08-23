@@ -12,6 +12,9 @@ class YouTubeDownloader(BaseDownloader):
         if settings.youtube_cookies_path:
             options["cookiefile"] = settings.youtube_cookies_path
         options["ffmpeg_location"] = settings.ffmpeg_executable
+        options["extractor_args"] = {
+            "youtube": {"player_client": ["android"]}
+        }
         return options
 
     def can_handle(self, url: str) -> bool:
