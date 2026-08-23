@@ -90,8 +90,12 @@ class YouTubeDownloader(BaseDownloader):
     @staticmethod
     def _format_for_quality(quality: str) -> str:
         if quality == "best":
-            return "bestvideo*+bestaudio/best"
-        return f"bestvideo[height<={quality}]+bestaudio/best[height<={quality}]"
+            return "best/bestvideo*+bestaudio"
+        return (
+            f"best[height<={quality}]/"
+            f"bestvideo[height<={quality}]+bestaudio/"
+            f"best[height<={quality}]/best"
+        )
 
     async def _convert_webm(self, file_path: str) -> str:
         source = Path(file_path)
