@@ -6,6 +6,7 @@ __pycache__/
 venv/
 env/
 .env
+youtube_cookies.txt
 *.db
 *.sqlite
 *.sqlite3
