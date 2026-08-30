@@ -8,22 +8,23 @@ from mediasave.app.downloaders.utils import build_ytdlp_opts
 logger = logging.getLogger(__name__)
 
 
-class TwitterDownloader(BaseDownloader):
+class LikeeDownloader(BaseDownloader):
     def can_handle(self, url: str) -> bool:
         patterns = [
-            r"(https?://)?(www\.)?(twitter\.com|x\.com)/",
+            r"(https?://)?(www\.)?likee\.video/",
+            r"(https?://)?(www\.)?likee\.com/",
         ]
         return any(re.search(p, url) for p in patterns)
 
     async def get_info(self, url: str) -> MediaInfo:
         import yt_dlp
         ydl_opts = build_ytdlp_opts(url)
-        logger.info("Twitter get_info: %s", url)
+        logger.info("Likee get_info: %s", url)
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
         return MediaInfo(
             url=url,
-            platform=PlatformType.TWITTER,
+            platform=PlatformType.LIKEE,
             media_type=MediaType.VIDEO if info.get("vcodec") != "none" else MediaType.IMAGE,
             title=info.get("title") or info.get("description"),
             duration=info.get("duration"),
@@ -35,7 +36,7 @@ class TwitterDownloader(BaseDownloader):
     async def download(self, url: str, output_dir: str, quality: str = "best") -> Union[str, List[str]]:
         import yt_dlp, os
         ydl_opts = build_ytdlp_opts(url, {"outtmpl": os.path.join(output_dir, "%(title)s.%(ext)s")})
-        logger.info("Twitter download: %s -> %s", url, output_dir)
+        logger.info("Likee download: %s -> %s", url, output_dir)
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
         return ydl.prepare_filename(info)

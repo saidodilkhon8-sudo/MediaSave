@@ -1,12 +1,20 @@
 import os
 import asyncio
 import uuid
+import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Callable, Union, List
 from mediasave.app.downloaders.schemas import MediaInfo
 from mediasave.app.downloaders.base import BaseDownloader
 from mediasave.app.media.ffmpeg import run_ffmpeg
 from mediasave.app.config import settings
+from mediasave.app.services.retry import retry_async
+
+
+logger = logging.getLogger(__name__)
+
+
+_semaphore = asyncio.Semaphore(settings.download_concurrency)
 
 
 class DownloadService:
@@ -15,18 +23,43 @@ class DownloadService:
         self.temp_dir = temp_dir
         self.temp_dir.mkdir(parents=True, exist_ok=True)
 
-    async def process(self, url: str, on_progress=None, quality: str = "best") -> tuple[Optional[str], Optional[MediaInfo]]:
+    async def process(self, url: str, on_progress: Optional[Callable[[int], None]] = None, quality: str = "best") -> tuple[Optional[Union[str, List[str]]], Optional[MediaInfo]]:
         task_id = str(uuid.uuid4())
         task_dir = self.temp_dir / task_id
         task_dir.mkdir(parents=True, exist_ok=True)
+        throttled = self._throttle(on_progress) if on_progress else None
         try:
-            info = await self.downloader.get_info(url)
-            file_path = await self.downloader.download(url, str(task_dir), quality=quality)
-            if on_progress:
-                await on_progress(100)
-            return file_path, info
+            logger.info("DownloadService.get_info start: url=%s, quality=%s", url, quality)
+            info = await retry_async(lambda: self.downloader.get_info(url), max_attempts=3, delay=2, backoff=2)
+            logger.info("DownloadService.get_info done: platform=%s, title=%s", info.platform if info else None, info.title if info else None)
+            async with _semaphore:
+                logger.info("DownloadService.download start: url=%s, quality=%s", url, quality)
+                file_path = await retry_async(lambda: self.downloader.download(url, str(task_dir), quality=quality), max_attempts=3, delay=2, backoff=2)
+                logger.info("DownloadService.download done: file_path=%s", file_path)
+            if throttled:
+                await throttled(100)
+            if isinstance(file_path, list):
+                valid = [p for p in file_path if Path(p).is_file() and Path(p).stat().st_size > 1024]
+                return valid if valid else None, info
+            if file_path and Path(file_path).is_file() and Path(file_path).stat().st_size > 1024:
+                return file_path, info
+            return None, info
         except Exception as e:
             if task_dir.exists():
                 import shutil
                 shutil.rmtree(task_dir, ignore_errors=True)
+            logger.error("DownloadService failed: url=%s, error=%s", url, e)
             raise e
+
+    def _throttle(self, on_progress: Optional[Callable[[int], None]]) -> Callable[[int], None]:
+        last_update = 0.0
+
+        async def wrapped(pct: int) -> None:
+            nonlocal last_update
+            now = asyncio.get_event_loop().time()
+            if now - last_update >= 1.0:
+                last_update = now
+                if on_progress:
+                    await on_progress(pct)
+
+        return wrapped

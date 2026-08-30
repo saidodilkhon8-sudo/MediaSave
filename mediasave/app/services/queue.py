@@ -1,38 +1,44 @@
 import asyncio
-import logging
-from typing import Callable, Awaitable, Optional
+from collections import defaultdict
+from typing import Optional
 from mediasave.app.config import settings
-
-logger = logging.getLogger(__name__)
 
 
 class DownloadQueue:
-    def __init__(self, max_size: int = None):
-        self.max_size = max_size or settings.max_queue_size
-        self._queue: asyncio.Queue = asyncio.Queue(maxsize=self.max_size)
-        self._processing = False
+    def __init__(self):
+        self._queues: dict[int, list[int]] = defaultdict(list)
+        self._active: set[int] = set()
         self._lock = asyncio.Lock()
 
-    async def enqueue(self, task: Callable[[], Awaitable[None]]) -> int:
-        async with self._lock:
-            position = self._queue.qsize() + 1
-            await self._queue.put(task)
-            if not self._processing:
-                self._processing = True
-                asyncio.create_task(self._process())
-            return position
+    def add(self, user_id: int) -> int:
+        position = len(self._queues[user_id]) + 1
+        self._queues[user_id].append(user_id)
+        return position
 
-    async def _process(self):
-        while not self._queue.empty():
-            task = await self._queue.get()
-            try:
-                await task()
-            except Exception:
-                logger.exception("Queued task failed")
-            self._queue.task_done()
-        async with self._lock:
-            self._processing = False
+    def remove(self, user_id: int) -> None:
+        if user_id in self._queues and self._queues[user_id]:
+            self._queues[user_id].pop(0)
+        self._active.discard(user_id)
 
-    @property
+    def is_active(self, user_id: int) -> bool:
+        return user_id in self._active
+
+    async def acquire(self, user_id: int) -> bool:
+        async with self._lock:
+            if self.is_active(user_id):
+                return False
+            if len(self._active) >= settings.download_concurrency:
+                return False
+            self._active.add(user_id)
+            self.remove(user_id)
+            return True
+
+    def release(self, user_id: int) -> None:
+        self._active.discard(user_id)
+
     def size(self) -> int:
-        return self._queue.qsize()
+        return len(self._active) + sum(len(q) for q in self._queues.values())
+
+
+class QueueFullError(Exception):
+    pass

@@ -8,6 +8,7 @@ from mediasave.app.config import settings
 async def run_ffmpeg(args: list[str], timeout: Optional[int] = None) -> Tuple[bool, str]:
     timeout = timeout or settings.ffmpeg_timeout
     cmd = [settings.ffmpeg_executable, "-y", "-loglevel", "error"] + args
+    proc = None
     try:
         proc = await asyncio.create_subprocess_exec(
             *cmd,
@@ -19,8 +20,14 @@ async def run_ffmpeg(args: list[str], timeout: Optional[int] = None) -> Tuple[bo
         error = (stderr or b"").decode("utf-8", errors="replace")
         return proc.returncode == 0, error or output
     except asyncio.TimeoutError:
-        proc.kill()
-        await proc.wait()
+        if proc is not None:
+            try:
+                proc.kill()
+                await proc.wait()
+            except ProcessLookupError:
+                pass
+            except Exception:
+                pass
         return False, "FFmpeg timeout"
     except Exception as e:
         return False, str(e)

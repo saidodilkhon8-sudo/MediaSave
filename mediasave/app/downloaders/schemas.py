@@ -1,15 +1,19 @@
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Optional, List
 from enum import Enum
 
 
 class PlatformType(str, Enum):
+    INSTAGRAM = "instagram"
     YOUTUBE = "youtube"
     YOUTUBE_SHORTS = "youtube_shorts"
-    TIKTOK = "tiktok"
-    INSTAGRAM = "instagram"
+    SNAPCHAT = "snapchat"
+    LIKEE = "likee"
+    PINTEREST = "pinterest"
+    THREADS = "threads"
     TWITTER = "twitter"
     FACEBOOK = "facebook"
+    REDDIT = "reddit"
     UNKNOWN = "unknown"
 
 
@@ -17,6 +21,7 @@ class MediaType(str, Enum):
     VIDEO = "video"
     IMAGE = "image"
     AUDIO = "audio"
+    CAROUSEL = "carousel"
     UNKNOWN = "unknown"
 
 
@@ -31,3 +36,4 @@ class MediaInfo:
     thumbnail_url: Optional[str] = None
     uploader: Optional[str] = None
     original_url: Optional[str] = None
+    entries: Optional[List["MediaInfo"]] = field(default_factory=list)

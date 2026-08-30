@@ -1,0 +1,33 @@
+version: "3.8"
+
+services:
+  bot:
+    build: .
+    container_name: mediasave-bot
+    restart: unless-stopped
+    ports:
+      - "10000:10000"
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - ADMIN_IDS=${ADMIN_IDS}
+      - DATABASE_URL=sqlite+aiosqlite:///mediasave.db
+      - TEMP_DIR=./temp
+      - MAX_FILE_SIZE_MB=2000
+      - MAX_VIDEO_DURATION=900
+      - DOWNLOAD_CONCURRENCY=3
+      - LOG_LEVEL=INFO
+      - AUTO_DELETE_HOURS=24
+      - DEFAULT_LANGUAGE=ru
+      - RATE_LIMIT_PER_MINUTE=30
+      - FFMPEG_TIMEOUT=120
+      - FFMPEG_PATH=ffmpeg
+      - MUSIC_API_KEY=${MUSIC_API_KEY}
+      - LYRICS_API_KEY=${LYRICS_API_KEY}
+    volumes:
+      - ./temp:/app/temp
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:10000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

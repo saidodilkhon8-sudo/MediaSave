@@ -1,5 +1,5 @@
 # Core bot framework
-aiogram==3.4.1
+aiogram>=3.31.0
 
 # Media downloading
 yt-dlp>=2024.8.6
@@ -16,10 +16,6 @@ python-dotenv>=1.0.0
 # Database
 SQLAlchemy>=2.0.0
 aiosqlite>=0.19.0
-asyncpg>=0.29.0
-
-# Caching / optional Redis
-redis>=5.0.0
 
 # Media processing
 ffmpeg-python>=0.2.0
@@ -34,3 +30,6 @@ pytest-asyncio>=0.21.0
 # Web framework for health checks / API
 fastapi>=0.100.0
 uvicorn>=0.23.0
+
+# Music recognition
+pydub>=0.25.1

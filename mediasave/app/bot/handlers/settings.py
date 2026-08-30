@@ -1,11 +1,29 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 from mediasave.app.database.database import get_session
 from mediasave.app.database.repositories import UserRepository, UserSettingRepository
 from mediasave.app.i18n import get_text
 from mediasave.app.config import settings
+import logging
 
 router = Router()
+logger = logging.getLogger(__name__)
+
+
+class CutStates(StatesGroup):
+    waiting_for_cut = State()
+
+
+def _settings_keyboard(lang: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=get_text(lang, "settings_language"), callback_data="set:lang")],
+        [InlineKeyboardButton(text=get_text(lang, "settings_quality"), callback_data="set:quality")],
+        [InlineKeyboardButton(text=get_text(lang, "settings_audio_format"), callback_data="set:audio")],
+        [InlineKeyboardButton(text=get_text(lang, "settings_circle"), callback_data="set:circle")],
+        [InlineKeyboardButton(text=get_text(lang, "settings_auto_delete"), callback_data="set:autodelete")],
+    ])
 
 
 @router.message(lambda m: m.text and (m.text == get_text("ru", "menu_settings") or m.text == get_text("en", "menu_settings") or m.text == get_text("uz", "menu_settings")))
@@ -15,13 +33,7 @@ async def open_settings(message: Message):
         user = await user_repo.get_by_telegram_id(message.from_user.id)
         lang = user.language if user else "ru"
     text = get_text(lang, "settings_title")
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=get_text(lang, "settings_language"), callback_data="set:lang")],
-        [InlineKeyboardButton(text=get_text(lang, "settings_quality"), callback_data="set:quality")],
-        [InlineKeyboardButton(text=get_text(lang, "settings_audio_format"), callback_data="set:audio")],
-        [InlineKeyboardButton(text=get_text(lang, "settings_circle"), callback_data="set:circle")],
-        [InlineKeyboardButton(text=get_text(lang, "settings_auto_delete"), callback_data="set:autodelete")],
-    ])
+    kb = _settings_keyboard(lang)
     await message.answer(text, reply_markup=kb)
 
 
@@ -48,7 +60,7 @@ async def change_language(callback: CallbackQuery):
         user = await user_repo.get_by_telegram_id(callback.from_user.id)
         if user:
             await user_repo.set_language(user.id, new_lang)
-    await callback.message.edit_text(get_text(new_lang, "settings_title"))
+    await callback.message.edit_text(get_text(new_lang, "settings_title"), reply_markup=_settings_keyboard(new_lang))
     await callback.answer()
 
 
@@ -81,7 +93,7 @@ async def change_quality(callback: CallbackQuery):
             lang = user.language or "ru"
         else:
             lang = "ru"
-    await callback.message.edit_text(f"{get_text(lang, 'settings_quality')}: {quality}")
+    await callback.message.edit_text(get_text(lang, "settings_title"), reply_markup=_settings_keyboard(lang))
     await callback.answer()
 
 
@@ -91,4 +103,7 @@ async def settings_coming_soon(callback: CallbackQuery):
         user_repo = UserRepository(session)
         user = await user_repo.get_by_telegram_id(callback.from_user.id)
         lang = user.language if user else "ru"
-    await callback.answer(get_text(lang, "download_error"), show_alert=True)
+    try:
+        await callback.answer(get_text(lang, "download_error"), show_alert=True)
+    except Exception:
+        pass
