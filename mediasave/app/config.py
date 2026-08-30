@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     twitter_cookies_base64: str = ""
     facebook_cookies_file: str = ""
     facebook_cookies_base64: str = ""
+    watermark_enabled: bool = True
+    watermark_text: str = "MediaSave"
 
     @property
     def temp_path(self) -> Path:

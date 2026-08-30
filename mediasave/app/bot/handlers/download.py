@@ -137,11 +137,19 @@ async def handle_url(message: Message):
             nonlocal download_id
             lang = await get_user_language(message)
             status_msg = await message.answer(get_text(lang, "processing_url"))
+            watermark_enabled = settings.watermark_enabled
+            async with get_session() as session:
+                user = await UserRepository(session).get_by_telegram_id(message.from_user.id)
+                if user:
+                    setting = await UserSettingRepository(session).get(user.id, "watermark_enabled")
+                    if setting is not None:
+                        watermark_enabled = setting == "true"
 
-            async def progress_callback(pct):
+            async def progress_callback(pct, speed=0, total=0):
                 try:
                     bar = "█" * (pct // 10) + "░" * (10 - pct // 10)
-                    await status_msg.edit_text(f"{get_text(lang, 'downloading')}\n\n{bar} {pct}%")
+                    speed_text = f"\n⚡ {speed / 1024 / 1024:.2f} MB/s" if speed else ""
+                    await status_msg.edit_text(f"{get_text(lang, 'downloading')}\n\n{bar} {pct}%{speed_text}")
                 except Exception:
                     pass
 
@@ -179,6 +187,7 @@ async def handle_url(message: Message):
                         except Exception:
                             logger.exception("Failed to send item %s", fp)
                     kb = InlineKeyboardMarkup(inline_keyboard=[
+                        [InlineKeyboardButton(text="⬇️ Скачать ещё", switch_inline_query_current_chat=url)],
                         [InlineKeyboardButton(text=get_text(lang, "actions_circle"), callback_data=f"act:circle:{download.id}")],
                         [InlineKeyboardButton(text=get_text(lang, "actions_mp3"), callback_data=f"act:mp3:{download.id}")],
                     ])
@@ -209,7 +218,15 @@ async def handle_url(message: Message):
                     except Exception:
                         send_path = file_path
 
+                if watermark_enabled and info.media_type == MediaType.VIDEO and Path(send_path).suffix.lower() != ".webm":
+                    watermarked, watermark_error = await media_service.add_watermark(send_path)
+                    if watermarked:
+                        send_path = watermarked
+                    else:
+                        logger.warning("Watermark skipped: %s", watermark_error)
+
                 kb = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="⬇️ Скачать ещё", switch_inline_query_current_chat=url)],
                     [InlineKeyboardButton(text=get_text(lang, "actions_video"), callback_data=f"act:video:{download.id}")],
                     [InlineKeyboardButton(text=get_text(lang, "actions_circle"), callback_data=f"act:circle:{download.id}")],
                     [InlineKeyboardButton(text=get_text(lang, "actions_mp3"), callback_data=f"act:mp3:{download.id}")],

@@ -23,6 +23,7 @@ def _settings_keyboard(lang: str) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text=get_text(lang, "settings_audio_format"), callback_data="set:audio")],
         [InlineKeyboardButton(text=get_text(lang, "settings_circle"), callback_data="set:circle")],
         [InlineKeyboardButton(text=get_text(lang, "settings_auto_delete"), callback_data="set:autodelete")],
+        [InlineKeyboardButton(text=get_text(lang, "settings_watermark"), callback_data="set:watermark")],
     ])
 
 
@@ -95,6 +96,22 @@ async def change_quality(callback: CallbackQuery):
             lang = "ru"
     await callback.message.edit_text(get_text(lang, "settings_title"), reply_markup=_settings_keyboard(lang))
     await callback.answer()
+
+
+@router.callback_query(F.data == "set:watermark")
+async def toggle_watermark(callback: CallbackQuery):
+    async with get_session() as session:
+        user = await UserRepository(session).get_by_telegram_id(callback.from_user.id)
+        if not user:
+            await callback.answer(get_text("ru", "download_error"), show_alert=True)
+            return
+        repository = UserSettingRepository(session)
+        current = await repository.get(user.id, "watermark_enabled")
+        enabled = current != "false"
+        await repository.set(user.id, "watermark_enabled", "false" if enabled else "true")
+        lang = user.language or "ru"
+    await callback.answer(get_text(lang, "watermark_off" if enabled else "watermark_on"), show_alert=True)
+    await callback.message.edit_reply_markup(reply_markup=_settings_keyboard(lang))
 
 
 @router.callback_query(F.data.in_({"set:quality", "set:audio", "set:circle", "set:autodelete"}))

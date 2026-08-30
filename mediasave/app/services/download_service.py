@@ -9,6 +9,7 @@ from mediasave.app.downloaders.base import BaseDownloader
 from mediasave.app.media.ffmpeg import run_ffmpeg
 from mediasave.app.config import settings
 from mediasave.app.services.retry import retry_async
+from mediasave.app.downloaders.utils import set_progress_callback, reset_progress_callback
 
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,18 @@ class DownloadService:
         task_dir = self.temp_dir / task_id
         task_dir.mkdir(parents=True, exist_ok=True)
         throttled = self._throttle(on_progress) if on_progress else None
+        loop = asyncio.get_running_loop()
+
+        def progress_hook(data):
+            if not throttled or data.get("status") != "downloading":
+                return
+            total = data.get("total_bytes") or data.get("total_bytes_estimate") or 0
+            downloaded = data.get("downloaded_bytes") or 0
+            speed = data.get("speed") or 0
+            pct = int(downloaded * 100 / total) if total else 0
+            loop.call_soon_threadsafe(asyncio.create_task, throttled(pct, speed, total))
+
+        progress_token = set_progress_callback(progress_hook)
         try:
             logger.info("DownloadService.get_info start: url=%s, quality=%s", url, quality)
             info = await retry_async(lambda: self.downloader.get_info(url), max_attempts=3, delay=2, backoff=2)
@@ -50,16 +63,18 @@ class DownloadService:
                 shutil.rmtree(task_dir, ignore_errors=True)
             logger.error("DownloadService failed: url=%s, error=%s", url, e)
             raise e
+        finally:
+            reset_progress_callback(progress_token)
 
     def _throttle(self, on_progress: Optional[Callable[[int], None]]) -> Callable[[int], None]:
         last_update = 0.0
 
-        async def wrapped(pct: int) -> None:
+        async def wrapped(pct: int, speed: float = 0, total: int = 0) -> None:
             nonlocal last_update
             now = asyncio.get_event_loop().time()
             if now - last_update >= 1.0:
                 last_update = now
                 if on_progress:
-                    await on_progress(pct)
+                    await on_progress(pct, speed, total)
 
         return wrapped

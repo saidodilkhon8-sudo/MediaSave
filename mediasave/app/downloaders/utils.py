@@ -1,8 +1,18 @@
 import logging
+from contextvars import ContextVar
 from typing import Optional
 from mediasave.app.config import settings
 
 logger = logging.getLogger(__name__)
+_progress_callback = ContextVar("progress_callback", default=None)
+
+
+def set_progress_callback(callback):
+    return _progress_callback.set(callback)
+
+
+def reset_progress_callback(token) -> None:
+    _progress_callback.reset(token)
 
 
 def _platform_for_url(url: str) -> Optional[str]:
@@ -53,6 +63,9 @@ def build_ytdlp_opts(url: str, extra: Optional[dict] = None) -> dict:
         "proxy": settings.proxy_url or None,
         "timeout": settings.download_timeout,
     }
+    progress_callback = _progress_callback.get()
+    if progress_callback:
+        opts["progress_hooks"] = [progress_callback]
     if cookie_path:
         opts["cookiefile"] = cookie_path
     if extra:

@@ -15,6 +15,7 @@ from mediasave.app.bot.handlers.media_actions import router as media_actions_rou
 from mediasave.app.bot.handlers.settings import router as settings_router
 from mediasave.app.bot.handlers.history import router as history_router
 from mediasave.app.bot.handlers.music_search import router as music_search_router
+from mediasave.app.bot.handlers.admin import router as admin_router
 
 
 logging.basicConfig(
@@ -71,6 +72,7 @@ async def main():
     dp.include_router(settings_router)
     dp.include_router(music_search_router)
     dp.include_router(history_router)
+    dp.include_router(admin_router)
 
     asyncio.create_task(cleanup_temp_files())
 

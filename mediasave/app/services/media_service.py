@@ -35,6 +35,19 @@ class MediaService:
             return output, None
         return None, error
 
+    async def add_watermark(self, input_path: str) -> tuple[str | None, str | None]:
+        output = self.temp_dir / "watermarked.mp4"
+        watermark = settings.watermark_text.replace("\\", "\\\\").replace(":", "\\:").replace("'", "\\'")
+        success, error = await run_ffmpeg([
+            "-i", input_path,
+            "-vf", f"drawtext=text='{watermark}':fontcolor=white:fontsize=24:box=1:boxcolor=black@0.55:boxborderw=8:x=12:y=h-th-12",
+            "-c:v", "libx264", "-preset", "fast", "-c:a", "copy", "-movflags", "+faststart",
+            str(output),
+        ])
+        if success and output.is_file():
+            return str(output), None
+        return None, error or "Watermark failed"
+
     async def cut_video(self, input_path: str, start: str, end: str) -> tuple[str | None, str | None]:
         output = str(Path(self.temp_dir) / "cut.mp4")
         success, error = await run_ffmpeg([
