@@ -187,7 +187,7 @@ async def handle_url(message: Message):
                         except Exception:
                             logger.exception("Failed to send item %s", fp)
                     kb = InlineKeyboardMarkup(inline_keyboard=[
-                        [InlineKeyboardButton(text="⬇️ Скачать ещё", switch_inline_query_current_chat=url)],
+                        [InlineKeyboardButton(text=get_text(lang, "download_more"), switch_inline_query_current_chat=url)],
                         [InlineKeyboardButton(text=get_text(lang, "actions_circle"), callback_data=f"act:circle:{download.id}")],
                         [InlineKeyboardButton(text=get_text(lang, "actions_mp3"), callback_data=f"act:mp3:{download.id}")],
                     ])
