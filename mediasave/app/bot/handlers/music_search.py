@@ -85,7 +85,7 @@ async def music_search_track(callback: CallbackQuery):
     await callback.message.answer(get_text(lang, "music_search_track_prompt"))
 
 
-@router.message(lambda m: m.chat.type == ChatType.PRIVATE and bool(m.text))
+@router.message(lambda m: m.chat.type == "private" and bool(m.text))
 async def handle_music_search_text(message: Message):
     user_id = message.from_user.id
     if user_id not in _pending_results:
