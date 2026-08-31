@@ -43,11 +43,29 @@ class DownloadService:
         progress_token = set_progress_callback(progress_hook)
         try:
             logger.info("DownloadService.get_info start: url=%s, quality=%s", url, quality)
-            info = await retry_async(lambda: self.downloader.get_info(url), max_attempts=3, delay=2, backoff=2)
+            try:
+                info = await retry_async(lambda: self.downloader.get_info(url), max_attempts=3, delay=2, backoff=2)
+            except Exception as e:
+                error_msg = str(e).lower()
+                logger.error("Failed to get video info: %s", e)
+                if "private" in error_msg or "age" in error_msg:
+                    raise RuntimeError("Это видео защищено от скачивания или требует авторизацию")
+                elif "unavailable" in error_msg or "removed" in error_msg:
+                    raise RuntimeError("Видео недоступно или было удалено")
+                elif "403" in error_msg:
+                    raise RuntimeError("Доступ запрещен. Может потребоваться авторизация.")
+                elif "geoblocked" in error_msg or "not available" in error_msg:
+                    raise RuntimeError("Видео недоступно в вашем регионе")
+                raise
+            
             logger.info("DownloadService.get_info done: platform=%s, title=%s", info.platform if info else None, info.title if info else None)
             async with _semaphore:
                 logger.info("DownloadService.download start: url=%s, quality=%s", url, quality)
-                file_path = await retry_async(lambda: self.downloader.download(url, str(task_dir), quality=quality), max_attempts=3, delay=2, backoff=2)
+                try:
+                    file_path = await retry_async(lambda: self.downloader.download(url, str(task_dir), quality=quality), max_attempts=3, delay=2, backoff=2)
+                except Exception as e:
+                    logger.error("Download failed: %s", e)
+                    raise
                 logger.info("DownloadService.download done: file_path=%s", file_path)
             if throttled:
                 await throttled(100)

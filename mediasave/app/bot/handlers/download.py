@@ -271,21 +271,38 @@ async def handle_url(message: Message):
                     await message.answer(get_text(lang, "download_error"))
 
             except Exception as e:
-                error_str = str(e)
+                error_str = str(e).lower()
+                error_msg = get_text(lang, "download_error")
+                
+                # Determine specific error
+                if "403" in error_str or "forbidden" in error_str:
+                    error_msg = get_text(lang, "content_protected")
+                elif "not available" in error_str or "unavailable" in error_str:
+                    error_msg = get_text(lang, "content_unavailable")
+                elif any(x in error_str for x in ["winerror 10054", "connectionreseterror", "forcibly closed", "handshake operation timed out", "timed out"]):
+                    error_msg = get_text(lang, "platform_blocked")
+                elif "video unavailable" in error_str or "this video has been removed" in error_str:
+                    error_msg = get_text(lang, "content_unavailable")
+                elif "private video" in error_str or "age restricted" in error_str:
+                    error_msg = get_text(lang, "content_protected")
+                elif "sign in" in error_str or "login" in error_str:
+                    error_msg = "🔒 Видео требует авторизации. Попробуйте другое видео."
+                elif "geoblocked" in error_str or "not available in" in error_str:
+                    error_msg = "🌍 Видео недоступно в вашем регионе."
+                elif "http error" in error_str:
+                    http_code = ""
+                    if "404" in error_str:
+                        http_code = " (404 - видео не найдено)"
+                    elif "503" in error_str:
+                        http_code = " (503 - сервис недоступен)"
+                    error_msg = f"❌ Ошибка сервера{http_code}. Попробуйте позже."
+                
                 try:
-                    if "HTTP Error 403" in error_str or "403" in error_str:
-                        await message.answer(get_text(lang, "content_protected"))
-                        if platform == PlatformType.YOUTUBE:
-                            cookie_path = settings.platform_cookies_path("youtube")
-                            if not cookie_path:
-                                await message.answer("Для скачивания YouTube может потребоваться авторизация. Загрузи cookies через /cookies_youtube.")
-                    elif any(x in error_str.lower() for x in ["winerror 10054", "connectionreseterror", "forcibly closed", "handshake operation timed out", "timed out"]):
-                        await message.answer(get_text(lang, "platform_blocked"))
-                    else:
-                        await message.answer(get_text(lang, "download_error"))
+                    await message.answer(error_msg)
                 except Exception:
                     logger.debug("Failed to send error message to user")
-                logger.exception("Download handling failed for %s", url)
+                
+                logger.exception("Download handling failed for %s: %s", url, e)
                 try:
                     if download_id is not None:
                         async with get_session() as session:
