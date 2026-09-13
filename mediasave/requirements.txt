@@ -2,7 +2,7 @@
 aiogram>=3.31.0
 
 # Media downloading
-yt-dlp>=2024.8.6
+yt-dlp>=2026.8.19
 
 # Async utilities
 aiofiles>=23.2.1
