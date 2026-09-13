@@ -24,11 +24,15 @@ class YouTubeDownloader(BaseDownloader):
         last_error = None
         for client in ("android_vr", "android", "ios", "web", "mweb", "mediaconnect"):
             try:
+                extractor_args = {"youtube": {"player_client": [client]}}
+                po_token = getattr(settings, "youtube_po_token", None)
+                if po_token:
+                    extractor_args["youtube"]["po_token"] = po_token
                 ydl_opts = {
                     "quiet": True,
                     "no_warnings": True,
                     "ffmpeg_location": settings.ffmpeg_executable,
-                    "extractor_args": {"youtube": {"player_client": [client]}},
+                    "extractor_args": extractor_args,
                     "http_headers": {
                         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
@@ -79,13 +83,17 @@ class YouTubeDownloader(BaseDownloader):
         last_error = None
         for client in ("android_vr", "android", "ios", "web", "mweb", "mediaconnect"):
             try:
+                extractor_args = {"youtube": {"player_client": [client]}}
+                po_token = getattr(settings, "youtube_po_token", None)
+                if po_token:
+                    extractor_args["youtube"]["po_token"] = po_token
                 ydl_opts = {
                     "outtmpl": os.path.join(output_dir, "%(title)s.%(ext)s"),
                     "quiet": True,
                     "no_warnings": True,
                     "format": self._format_for_quality(quality),
                     "ffmpeg_location": settings.ffmpeg_executable,
-                    "extractor_args": {"youtube": {"player_client": [client]}},
+                    "extractor_args": extractor_args,
                     "http_headers": {
                         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",

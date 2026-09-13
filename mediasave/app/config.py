@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     proxy_url: str = ""
     youtube_cookies_file: str = ""
     youtube_cookies_base64: str = ""
+    youtube_po_token: str = ""
     cookies_path: str = ""
     instagram_cookies_file: str = ""
     instagram_cookies_base64: str = ""
